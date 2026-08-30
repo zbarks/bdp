@@ -37,6 +37,14 @@
   .brand img{height:30px;}
   .brand span{font-family:'Anton',sans-serif;letter-spacing:0.06em;font-size:0.95rem;color:var(--muted);}
   #signout{background:none;border:1px solid var(--text);color:var(--text);border-radius:6px;padding:0.4rem 0.9rem;font-size:0.82rem;cursor:pointer;}
+  .header-right{display:flex;align-items:center;gap:1rem;}
+  .dash-toggle{display:flex;border:1px solid var(--text);border-radius:6px;overflow:hidden;}
+  .dash-toggle button{
+    background:none;border:none;color:var(--text);padding:0.4rem 0.8rem;font-size:0.78rem;
+    cursor:pointer;border-right:1px solid var(--border);font-family:Georgia,serif;
+  }
+  .dash-toggle button:last-child{border-right:none;}
+  .dash-toggle button.active{background:var(--text);color:var(--bg);font-weight:700;}
 
   nav{display:flex;gap:0.4rem;padding:1rem 2rem 0;border-bottom:1px solid var(--border);}
   nav button{
@@ -161,7 +169,14 @@
   <div id="app">
     <header>
       <div class="brand"><img src="assets/barker-logo.png" alt="" /><span>PORTAL</span></div>
-      <button id="signout">Sign out</button>
+      <div class="header-right">
+        <div class="dash-toggle" id="dashToggle">
+          <button data-mode="on">On</button>
+          <button data-mode="auto" class="active">Auto</button>
+          <button data-mode="off">Off</button>
+        </div>
+        <button id="signout">Sign out</button>
+      </div>
     </header>
     <nav>
       <button data-view="overview" class="active">Overview</button>
@@ -299,7 +314,22 @@
     document.getElementById('login').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     await loadAll(); render();
+    await loadDashToggle();
   }
+
+  async function loadDashToggle(){
+    const { data } = await sb.from('dashboard_settings').select('mode').eq('id', 1).single();
+    setDashToggleUI(data?.mode || 'auto');
+  }
+  function setDashToggleUI(mode){
+    document.querySelectorAll('#dashToggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  }
+  document.querySelectorAll('#dashToggle button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      setDashToggleUI(btn.dataset.mode);
+      await sb.from('dashboard_settings').update({ mode: btn.dataset.mode, updated_at: new Date().toISOString() }).eq('id', 1);
+    });
+  });
 
   document.querySelectorAll('nav button').forEach(btn => {
     btn.addEventListener('click', () => {
