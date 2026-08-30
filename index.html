@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Barker Digital — Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#0B0B0D; --surface:#151517; --surface-2:#1C1C1F; --border:#28282C;
+    --text:#F2F0EB; --muted:#8B8B90;
+    --amber:#E8A33D; --blue:#5B8DEF; --red:#E8555A; --green:#4ADE80; --grey-dot:#4B4B50;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+  a{color:inherit;}
+  button, input, select, textarea{font-family:inherit;}
+
+  /* ---- Login ---- */
+  #login{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2.4rem;
+  }
+  #login img{height:56px;}
+  #login form{display:flex;flex-direction:column;gap:0.9rem;width:280px;}
+  #login input{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:0.7rem 0.9rem;color:var(--text);font-size:0.9rem;
+  }
+  #login button{
+    background:var(--text);color:var(--bg);border:none;border-radius:8px;
+    padding:0.75rem;font-weight:600;cursor:pointer;font-size:0.9rem;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  #loginError{color:var(--red);font-size:0.8rem;min-height:1rem;}
+
+  /* ---- App shell ---- */
+  #app{display:none;}
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:1.4rem 2rem;border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex;align-items:center;gap:0.8rem;}
+  .brand img{height:28px;}
+  .brand span{font-family:'Space Grotesk',sans-serif;font-weight:600;letter-spacing:0.08em;font-size:0.85rem;color:var(--muted);}
+  #signout{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:0.4rem 0.8rem;font-size:0.8rem;cursor:pointer;}
+
+  nav{display:flex;gap:0.4rem;padding:1rem 2rem 0;border-bottom:1px solid var(--border);}
+  nav button{
+    background:none;border:none;color:var(--muted);padding:0.7rem 1rem;font-size:0.85rem;
+    font-family:'Space Grotesk',sans-serif;cursor:pointer;border-bottom:2px solid transparent;
+  }
+  nav button.active{color:var(--text);border-bottom-color:var(--text);}
+
+  main{padding:2rem;max-width:1100px;margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;}
+  .section-head h2{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:600;}
+  .add-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:0.5rem 0.9rem;font-size:0.8rem;cursor:pointer;
+  }
+
+  table{width:100%;border-collapse:collapse;}
+  th{
+    text-align:left;font-size:0.72rem;color:var(--muted);text-transform:uppercase;
+    letter-spacing:0.05em;padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);
+    font-family:'Space Grotesk',sans-serif;
+  }
+  td{padding:0.75rem 0.8rem;border-bottom:1px solid var(--border);font-size:0.87rem;}
+  tr:hover td{background:var(--surface);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:0.5rem;}
+  .dot.action_needed{background:var(--amber);}
+  .dot.awaiting_reply{background:var(--blue);}
+  .dot.needs_followup{background:var(--red);}
+  .dot.resolved{background:var(--green);}
+  .dot.no_contact,.dot.default{background:var(--grey-dot);}
+
+  .empty{color:var(--muted);font-size:0.85rem;padding:2rem 0;text-align:center;border:1px dashed var(--border);border-radius:8px;}
+
+  /* Modal */
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+    align-items:center;justify-content:center;z-index:10;
+  }
+  .overlay.active{display:flex;}
+  .modal{
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:1.6rem;width:360px;display:flex;flex-direction:column;gap:0.7rem;
+  }
+  .modal h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;margin-bottom:0.4rem;}
+  .modal input, .modal select, .modal textarea{
+    background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+    padding:0.6rem 0.7rem;color:var(--text);font-size:0.85rem;width:100%;
+  }
+  .modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:0.4rem;}
+  .modal-actions button{
+    border-radius:6px;padding:0.5rem 1rem;font-size:0.82rem;cursor:pointer;border:1px solid var(--border);
+    background:none;color:var(--text);
+  }
+  .modal-actions button.primary{background:var(--text);color:var(--bg);border:none;font-weight:600;}
+
+  .checkbox-row{display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0;}
+  .checkbox-row input{width:auto;}
+  .checkbox-row.done label{text-decoration:line-through;color:var(--muted);}
+
+  /* Updates / chat */
+  #chatComposer{display:flex;gap:0.6rem;margin-bottom:1.4rem;}
+  #chatComposer select{width:200px;flex-shrink:0;}
+  #chatComposer input{flex:1;}
+  #chatComposer button{
+    background:var(--text);color:var(--bg);border:none;border-radius:6px;
+    padding:0 1.1rem;font-weight:600;font-size:0.85rem;cursor:pointer;font-family:'Space Grotesk',sans-serif;
+  }
+  .chat-item{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:0.9rem 1.1rem;margin-bottom:0.6rem;
+  }
+  .chat-item .chat-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;}
+  .chat-item .chat-project{font-size:0.74rem;color:var(--muted);font-family:'Space Grotesk',sans-serif;letter-spacing:0.03em;}
+  .chat-badge{
+    font-size:0.68rem;padding:0.2rem 0.55rem;border-radius:20px;font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.03em;
+  }
+  .chat-badge.pending{background:rgba(232,163,61,0.15);color:var(--amber);}
+  .chat-badge.processed{background:rgba(74,222,128,0.15);color:var(--green);}
+  .chat-item .chat-msg{font-size:0.9rem;}
+  .chat-item .chat-note{font-size:0.78rem;color:var(--muted);margin-top:0.4rem;padding-top:0.4rem;border-top:1px solid var(--border);}
+  .chat-item .chat-time{font-size:0.7rem;color:#5A5A5F;margin-top:0.3rem;font-family:'IBM Plex Mono',monospace;}
+
+  .activity-item{
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:0.9rem 1.1rem;margin-bottom:0.6rem;cursor:pointer;
+  }
+  .activity-item .a-top{display:flex;justify-content:space-between;align-items:center;gap:0.8rem;}
+  .activity-item .a-project{font-size:0.74rem;color:var(--muted);font-family:'Space Grotesk',sans-serif;}
+  .activity-item .a-source{
+    font-size:0.66rem;padding:0.15rem 0.5rem;border-radius:20px;font-family:'IBM Plex Mono',monospace;
+    background:var(--surface-2);color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;
+  }
+  .activity-item .a-label{font-size:0.9rem;margin-top:0.3rem;}
+  .activity-item .a-detail{
+    display:none;font-size:0.8rem;color:var(--muted);margin-top:0.6rem;padding-top:0.6rem;
+    border-top:1px solid var(--border);line-height:1.5;
+  }
+  .activity-item.expanded .a-detail{display:block;}
+  .activity-item .a-time{font-size:0.7rem;color:#5A5A5F;margin-top:0.4rem;font-family:'IBM Plex Mono',monospace;}
+  h3.subhead{font-family:'Space Grotesk',sans-serif;font-size:0.85rem;color:var(--muted);margin:1.6rem 0 0.8rem;}
+</style>
+</head>
+<body>
+
+  <div id="login">
+    <img src="assets/barker-logo-cream.png" alt="Barker Digital" />
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required autocomplete="username" />
+      <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" />
+      <button type="submit">Sign in</button>
+      <div id="loginError"></div>
+    </form>
+  </div>
+
+  <div id="app">
+    <header>
+      <div class="brand"><img src="assets/barker-logo-cream.png" alt="" /><span>PORTAL</span></div>
+      <button id="signout">Sign out</button>
+    </header>
+    <nav>
+      <button data-view="overview" class="active">Overview</button>
+      <button data-view="clients">Clients</button>
+      <button data-view="projects">Projects</button>
+      <button data-view="finances">Finances</button>
+      <button data-view="tasks">Tasks</button>
+      <button data-view="updates">Updates</button>
+    </nav>
+
+    <main>
+      <div class="view active" id="view-overview">
+        <div class="section-head"><h2>Overview</h2></div>
+        <div id="overviewGrid" class="empty">Loading…</div>
+      </div>
+
+      <div class="view" id="view-clients">
+        <div class="section-head"><h2>Clients</h2><button class="add-btn" data-modal="client">+ Add client</button></div>
+        <table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Source</th></tr></thead><tbody id="clientsBody"></tbody></table>
+      </div>
+
+      <div class="view" id="view-projects">
+        <div class="section-head"><h2>Projects</h2><button class="add-btn" data-modal="project">+ Add project</button></div>
+        <table><thead><tr><th></th><th>Project</th><th>Client</th><th>Status</th><th>Value</th></tr></thead><tbody id="projectsBody"></tbody></table>
+      </div>
+
+      <div class="view" id="view-finances">
+        <div class="section-head"><h2>Finances</h2><button class="add-btn" data-modal="finance">+ Add entry</button></div>
+        <table><thead><tr><th>Date</th><th>Source</th><th>Description</th><th>Amount</th></tr></thead><tbody id="financesBody"></tbody></table>
+      </div>
+
+      <div class="view" id="view-tasks">
+        <div class="section-head"><h2>Tasks</h2><button class="add-btn" data-modal="task">+ Add task</button></div>
+        <div id="tasksList"></div>
+      </div>
+
+      <div class="view" id="view-updates">
+        <div class="section-head"><h2>Updates</h2></div>
+        <div id="chatComposer">
+          <select id="chat-project"><option value="">No specific project</option></select>
+          <input id="chat-message" placeholder="e.g. Just sent Hepple the revised homepage mockups" />
+          <button id="chat-send">Send</button>
+        </div>
+        <div id="chatList"></div>
+        <h3 class="subhead">Status changes &amp; why</h3>
+        <div id="activityLog"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modalClient" style="display:none;">
+      <h3>Add client</h3>
+      <input id="c-name" placeholder="Name" />
+      <input id="c-company" placeholder="Company" />
+      <input id="c-email" placeholder="Email" />
+      <input id="c-source" placeholder="Source (referral, Instagram…)" />
+      <div class="modal-actions"><button data-close>Cancel</button><button class="primary" data-save="client">Save</button></div>
+    </div>
+    <div class="modal" id="modalProject" style="display:none;">
+      <h3>Add project</h3>
+      <select id="p-client"></select>
+      <input id="p-name" placeholder="Project name" />
+      <select id="p-status">
+        <option value="active">Active</option>
+        <option value="awaiting_client">Awaiting client</option>
+        <option value="on_hold">On hold</option>
+        <option value="completed">Completed</option>
+      </select>
+      <input id="p-value" placeholder="Value (£)" type="number" />
+      <div class="modal-actions"><button data-close>Cancel</button><button class="primary" data-save="project">Save</button></div>
+    </div>
+    <div class="modal" id="modalFinance" style="display:none;">
+      <h3>Add finance entry</h3>
+      <select id="f-project"><option value="">— No project (standalone) —</option></select>
+      <input id="f-source" placeholder="Source (Barker Digital, Stag & Steel, personal…)" />
+      <input id="f-description" placeholder="Description" />
+      <input id="f-amount" placeholder="Amount (£)" type="number" step="0.01" />
+      <input id="f-date" type="date" />
+      <div class="modal-actions"><button data-close>Cancel</button><button class="primary" data-save="finance">Save</button></div>
+    </div>
+    <div class="modal" id="modalTask" style="display:none;">
+      <h3>Add task</h3>
+      <select id="t-project"></select>
+      <input id="t-title" placeholder="Task" />
+      <div class="modal-actions"><button data-close>Cancel</button><button class="primary" data-save="task">Save</button></div>
+    </div>
+  </div>
+
+<script>
+  const SUPABASE_URL = "https://faybcsknnbifjyqqiqej.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_QG7xERHmAZNHkUos0wb4ZA_PWHdy7lB";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const STATUS_LABEL = {
+    awaiting_reply: "Awaiting reply", reply_in_progress: "Reply in progress",
+    needs_followup: "Follow up", resolved: "Resolved", no_contact: "No contact yet"
+  };
+
+  let state = { clients: [], projects: [], finances: [], tasks: [], emailThreads: [], chatLog: [], activityLog: [] };
+
+  // ---- Auth ----
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { document.getElementById('loginError').textContent = error.message; return; }
+    showApp();
+  });
+  document.getElementById('signout').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  async function checkSession(){
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) showApp(); else document.getElementById('login').style.display = 'flex';
+  }
+
+  async function showApp(){
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    await loadAll();
+    render();
+  }
+
+  // ---- Nav ----
+  document.querySelectorAll('nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-' + btn.dataset.view).classList.add('active');
+    });
+  });
+
+  // ---- Data loading ----
+  async function loadAll(){
+    const [clients, projects, finances, tasks, threads, chat, activity] = await Promise.all([
+      sb.from('clients').select('*').order('created_at', {ascending:false}),
+      sb.from('projects').select('*').order('created_at', {ascending:false}),
+      sb.from('finances').select('*').order('received_at', {ascending:false}),
+      sb.from('project_tasks').select('*').order('created_at', {ascending:false}),
+      sb.from('email_threads').select('*'),
+      sb.from('chat_log').select('*').order('created_at', {ascending:false}).limit(100),
+      sb.from('activity_log').select('*').order('created_at', {ascending:false}).limit(100),
+    ]);
+    state.clients = clients.data || [];
+    state.projects = projects.data || [];
+    state.finances = finances.data || [];
+    state.tasks = tasks.data || [];
+    state.emailThreads = threads.data || [];
+    state.chatLog = chat.data || [];
+    state.activityLog = activity.data || [];
+  }
+
+  function clientName(id){ return state.clients.find(c => c.id === id)?.name || '—'; }
+  function projectName(id){ return state.projects.find(p => p.id === id)?.name || '—'; }
+  function threadForProject(id){ return state.emailThreads.find(t => t.project_id === id); }
+  function esc(s){ const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+  function money(n){ return '£' + Number(n||0).toLocaleString('en-GB', {minimumFractionDigits:2}); }
+
+  function render(){
+    renderOverview();
+    renderClients();
+    renderProjects();
+    renderFinances();
+    renderTasks();
+    renderChat();
+    renderActivityLog();
+    fillSelects();
+  }
+
+  function renderChat(){
+    const list = document.getElementById('chatList');
+    list.innerHTML = state.chatLog.length ? state.chatLog.map(m => `
+      <div class="chat-item">
+        <div class="chat-meta">
+          <span class="chat-project">${m.project_id ? esc(projectName(m.project_id)) : 'General'}</span>
+          <span class="chat-badge ${m.processed ? 'processed' : 'pending'}">${m.processed ? 'Reflected' : 'Pending — next Cowork run'}</span>
+        </div>
+        <div class="chat-msg">${esc(m.message)}</div>
+        ${m.processed_note ? `<div class="chat-note">${esc(m.processed_note)}</div>` : ''}
+        <div class="chat-time">${new Date(m.created_at).toLocaleString('en-GB')}</div>
+      </div>
+    `).join('') : `<div class="empty">No updates yet — tell it what you've done and Cowork will pick it up within the hour</div>`;
+  }
+
+  function renderActivityLog(){
+    const list = document.getElementById('activityLog');
+    list.innerHTML = state.activityLog.length ? state.activityLog.map(a => `
+      <div class="activity-item" data-id="${a.id}">
+        <div class="a-top">
+          <span class="a-project">${esc(projectName(a.project_id))}</span>
+          <span class="a-source">${esc(a.source)}</span>
+        </div>
+        <div class="a-label">${esc(a.status_label)}</div>
+        <div class="a-time">${new Date(a.created_at).toLocaleString('en-GB')}</div>
+        <div class="a-detail">
+          ${a.reasoning ? `<div><strong>Why:</strong> ${esc(a.reasoning)}</div>` : ''}
+          ${a.source_excerpt ? `<div style="margin-top:0.4rem;"><strong>From:</strong> "${esc(a.source_excerpt)}"</div>` : ''}
+        </div>
+      </div>
+    `).join('') : `<div class="empty">No status changes yet</div>`;
+    list.querySelectorAll('.activity-item').forEach(item => {
+      item.addEventListener('click', () => item.classList.toggle('expanded'));
+    });
+  }
+
+  document.getElementById('chat-send').addEventListener('click', sendChat);
+  document.getElementById('chat-message').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+  async function sendChat(){
+    const msgInput = document.getElementById('chat-message');
+    const message = msgInput.value.trim();
+    if (!message) return;
+    await sb.from('chat_log').insert({
+      message,
+      project_id: document.getElementById('chat-project').value || null,
+      author: 'zach',
+    });
+    msgInput.value = '';
+    await loadAll(); render();
+  }
+
+  function renderOverview(){
+    const el = document.getElementById('overviewGrid');
+    const active = state.projects.filter(p => p.status === 'active').length;
+    const revenue = state.finances
+      .filter(f => new Date(f.received_at).getMonth() === new Date().getMonth())
+      .reduce((s,f) => s + Number(f.amount), 0);
+    const awaiting = state.emailThreads.filter(t => t.status === 'awaiting_reply').length;
+    const followup = state.emailThreads.filter(t => t.status === 'needs_followup').length;
+    el.className = '';
+    el.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;';
+    el.innerHTML = [
+      ['Active projects', active],
+      ['Revenue this month', money(revenue)],
+      ['Awaiting reply', awaiting],
+      ['Needs follow-up', followup],
+    ].map(([label,val]) => `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem;">
+        <div class="mono" style="font-size:1.8rem;font-weight:600;">${val}</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;">${label}</div>
+      </div>`).join('');
+  }
+
+  function renderClients(){
+    const body = document.getElementById('clientsBody');
+    body.innerHTML = state.clients.length ? state.clients.map(c => `
+      <tr><td>${esc(c.name)}</td><td>${esc(c.company||'—')}</td><td>${esc(c.email||'—')}</td><td>${esc(c.source||'—')}</td></tr>
+    `).join('') : `<tr><td colspan="4" class="empty">No clients yet</td></tr>`;
+  }
+
+  function renderProjects(){
+    const body = document.getElementById('projectsBody');
+    body.innerHTML = state.projects.length ? state.projects.map(p => {
+      const thread = threadForProject(p.id);
+      return `<tr>
+        <td><span class="dot ${thread?.status || 'default'}"></span></td>
+        <td>${esc(p.name)}</td>
+        <td>${esc(clientName(p.client_id))}</td>
+        <td>${esc(thread?.status_label || p.status)}</td>
+        <td class="mono">${p.value ? money(p.value) : '—'}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="5" class="empty">No projects yet</td></tr>`;
+  }
+
+  function renderFinances(){
+    const body = document.getElementById('financesBody');
+    body.innerHTML = state.finances.length ? state.finances.map(f => `
+      <tr><td class="mono">${esc(f.received_at)}</td><td>${esc(f.source)}</td><td>${esc(f.description||'—')}</td><td class="mono">${money(f.amount)}</td></tr>
+    `).join('') : `<tr><td colspan="4" class="empty">No entries yet</td></tr>`;
+  }
+
+  function renderTasks(){
+    const list = document.getElementById('tasksList');
+    list.innerHTML = state.tasks.length ? state.tasks.map(t => `
+      <div class="checkbox-row ${t.done ? 'done':''}">
+        <input type="checkbox" ${t.done?'checked':''} data-task="${t.id}" />
+        <label>${esc(t.title)} <span style="color:var(--muted);font-size:0.78rem;">— ${esc(projectName(t.project_id))}</span></label>
+      </div>
+    `).join('') : `<div class="empty">No tasks yet</div>`;
+    list.querySelectorAll('input[data-task]').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        await sb.from('project_tasks').update({ done: cb.checked }).eq('id', cb.dataset.task);
+        await loadAll(); render();
+      });
+    });
+  }
+
+  function fillSelects(){
+    const clientOpts = state.clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    document.getElementById('p-client').innerHTML = `<option value="">— No client —</option>` + clientOpts;
+    const projectOpts = state.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    document.getElementById('f-project').innerHTML = `<option value="">— No project (standalone) —</option>` + projectOpts;
+    document.getElementById('t-project').innerHTML = projectOpts || `<option value="">No projects yet</option>`;
+    document.getElementById('chat-project').innerHTML = `<option value="">No specific project</option>` + projectOpts;
+  }
+
+  // ---- Modals ----
+  const overlay = document.getElementById('overlay');
+  document.querySelectorAll('[data-modal]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+      document.getElementById('modal' + capitalize(btn.dataset.modal)).style.display = 'flex';
+      document.getElementById('modal' + capitalize(btn.dataset.modal)).style.flexDirection = 'column';
+      overlay.classList.add('active');
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => overlay.classList.remove('active')));
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
+  function capitalize(s){ return s[0].toUpperCase() + s.slice(1); }
+
+  document.querySelectorAll('[data-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const type = btn.dataset.save;
+      if (type === 'client'){
+        await sb.from('clients').insert({
+          name: document.getElementById('c-name').value,
+          company: document.getElementById('c-company').value,
+          email: document.getElementById('c-email').value,
+          source: document.getElementById('c-source').value,
+        });
+      } else if (type === 'project'){
+        await sb.from('projects').insert({
+          client_id: document.getElementById('p-client').value || null,
+          name: document.getElementById('p-name').value,
+          status: document.getElementById('p-status').value,
+          value: document.getElementById('p-value').value || null,
+          started_at: new Date().toISOString().slice(0,10),
+        });
+      } else if (type === 'finance'){
+        await sb.from('finances').insert({
+          project_id: document.getElementById('f-project').value || null,
+          source: document.getElementById('f-source').value,
+          description: document.getElementById('f-description').value,
+          amount: document.getElementById('f-amount').value,
+          received_at: document.getElementById('f-date').value || new Date().toISOString().slice(0,10),
+        });
+      } else if (type === 'task'){
+        await sb.from('project_tasks').insert({
+          project_id: document.getElementById('t-project').value || null,
+          title: document.getElementById('t-title').value,
+        });
+      }
+      overlay.classList.remove('active');
+      await loadAll(); render();
+    });
+  });
+
+  checkSession();
+</script>
+</body>
+</html>
